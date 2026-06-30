@@ -1,52 +1,78 @@
-/* English Quest — Service Worker
-   Caches the app shell so it works fully offline after first load.
-   Bump CACHE_NAME whenever you deploy changes so clients update. */
-var CACHE_NAME = "english-quest-v9";
-var ASSETS = [
-  "./",
-  "./index.html",
-  "./style.css",
-  "./app.js",
-  "./content.js",
-  "./i18n.js",
-  "./sync.js",
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
-];
-self.addEventListener("install", function (event) {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(function (cache) {
-      return cache.addAll(ASSETS);
-    })
-  );
-  self.skipWaiting();
-});
-self.addEventListener("activate", function (event) {
-  event.waitUntil(
-    caches.keys().then(function (keys) {
-      return Promise.all(
-        keys.filter(function (k) { return k !== CACHE_NAME; }).map(function (k) { return caches.delete(k); })
-      );
-    })
-  );
-  self.clients.claim();
-});
-self.addEventListener("fetch", function (event) {
-  if (event.request.method !== "GET") return;
-  event.respondWith(
-    caches.match(event.request).then(function (cached) {
-      var fetchPromise = fetch(event.request).then(function (networkResponse) {
-        // Clone immediately, synchronously, before any async gap — once the
-        // browser starts delivering networkResponse to the page, the body
-        // is locked and a later .clone() throws "body already used".
-        var responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then(function (cache) {
-          cache.put(event.request, responseToCache);
-        });
-        return networkResponse;
-      }).catch(function () { return cached; });
-      return cached || fetchPromise;
-    })
-  );
-});
+/* ============================================================
+   English Quest — Sync layer (OPTIONAL)
+   ------------------------------------------------------------
+   The app works fully offline without this. To enable a SHARED
+   leaderboard that syncs across student phones once they have
+   internet, fill in firebaseConfig below with your own free
+   Firebase project's keys (see README.md "Set up shared
+   leaderboard" section for step-by-step instructions).
+   Until you fill this in, EQSync.isConfigured() returns false
+   and the app simply keeps each student's score on their own
+   device (still fully playable).
+   ============================================================ */
+(function (global) {
+  "use strict";
+  // ---- 1) YOUR FIREBASE CONFIG ----
+  var firebaseConfig = {
+    apiKey: "AIzaSyCUTCNifbcow_xiPtl9IE1S1kvDpbWu_8c",
+    authDomain: "english-quest-b5a29.firebaseapp.com",
+    databaseURL: "https://english-quest-b5a29-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "english-quest-b5a29",
+    storageBucket: "english-quest-b5a29.firebasestorage.app",
+    messagingSenderId: "946170898639",
+    appId: "1:946170898639:web:8977f3f4e45ff1f284afba"
+  };
+  var ready = false;
+  var db = null;
+  function init() {
+    if (!firebaseConfig || typeof firebase === "undefined") {
+      console.warn("EQSync: Firebase SDK not loaded — running offline-only.");
+      return;
+    }
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+      ready = true;
+      console.log("EQSync: Firebase connected.");
+    } catch (e) {
+      console.warn("EQSync: Firebase init failed", e);
+    }
+  }
+  function isConfigured() {
+    return !!firebaseConfig && ready;
+  }
+  function pushScore(player, points) {
+    if (!ready) return Promise.resolve();
+    return db.ref("leaderboard/" + player.id).set({
+      name: player.name,
+      points: points,
+      avatar: player.avatar || null,
+      updatedAt: Date.now()
+    });
+  }
+  function fetchLeaderboard() {
+    if (!ready) return Promise.resolve([]);
+    return db.ref("leaderboard").once("value").then(function (snap) {
+      var val = snap.val() || {};
+      return Object.keys(val).map(function (id) {
+        return { id: id, name: val[id].name, points: val[id].points, avatar: val[id].avatar };
+      });
+    });
+  }
+  function pushTeamScores(teamScores) {
+    if (!ready) return Promise.resolve();
+    return db.ref("teamScores").set(teamScores);
+  }
+  function deleteScore(playerId) {
+    if (!ready) return Promise.resolve();
+    return db.ref("leaderboard/" + playerId).remove();
+  }
+  init();
+  global.EQSync = {
+    isConfigured: isConfigured,
+    pushScore: pushScore,
+    fetchLeaderboard: fetchLeaderboard,
+    pushTeamScores: pushTeamScores,
+    deleteScore: deleteScore
+  };
+})(window);
