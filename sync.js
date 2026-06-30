@@ -71,12 +71,18 @@
     return db.ref("teamScores").set(teamScores);
   }
 
+  function deleteScore(playerId) {
+    if (!ready) return Promise.resolve();
+    return db.ref("leaderboard/" + playerId).remove();
+  }
+
   init();
 
   global.EQSync = {
     isConfigured: isConfigured,
     pushScore: pushScore,
     fetchLeaderboard: fetchLeaderboard,
-    pushTeamScores: pushTeamScores
+    pushTeamScores: pushTeamScores,
+    deleteScore: deleteScore
   };
 })(window);
