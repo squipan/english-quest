@@ -12,21 +12,18 @@
    ============================================================ */
 (function (global) {
   "use strict";
-
   // ---- 1) YOUR FIREBASE CONFIG ----
   var firebaseConfig = {
     apiKey: "AIzaSyCUTCNifbcow_xiPtl9IE1S1kvDpbWu_8c",
     authDomain: "english-quest-b5a29.firebaseapp.com",
-    databaseURL: "https://english-quest-b5a29-default-rtdb.firebaseio.com",
+    databaseURL: "https://english-quest-b5a29-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "english-quest-b5a29",
     storageBucket: "english-quest-b5a29.firebasestorage.app",
     messagingSenderId: "946170898639",
     appId: "1:946170898639:web:8977f3f4e45ff1f284afba"
   };
-
   var ready = false;
   var db = null;
-
   function init() {
     if (!firebaseConfig || typeof firebase === "undefined") {
       console.warn("EQSync: Firebase SDK not loaded — running offline-only.");
@@ -41,11 +38,9 @@
       console.warn("EQSync: Firebase init failed", e);
     }
   }
-
   function isConfigured() {
     return !!firebaseConfig && ready;
   }
-
   function pushScore(player, points) {
     if (!ready) return Promise.resolve();
     return db.ref("leaderboard/" + player.id).set({
@@ -55,7 +50,6 @@
       updatedAt: Date.now()
     });
   }
-
   function fetchLeaderboard() {
     if (!ready) return Promise.resolve([]);
     return db.ref("leaderboard").once("value").then(function (snap) {
@@ -65,19 +59,15 @@
       });
     });
   }
-
   function pushTeamScores(teamScores) {
     if (!ready) return Promise.resolve();
     return db.ref("teamScores").set(teamScores);
   }
-
   function deleteScore(playerId) {
     if (!ready) return Promise.resolve();
     return db.ref("leaderboard/" + playerId).remove();
   }
-
   init();
-
   global.EQSync = {
     isConfigured: isConfigured,
     pushScore: pushScore,
