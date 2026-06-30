@@ -1,7 +1,7 @@
 /* English Quest — Service Worker
    Caches the app shell so it works fully offline after first load.
    Bump CACHE_NAME whenever you deploy changes so clients update. */
-var CACHE_NAME = "english-quest-v4";
+var CACHE_NAME = "english-quest-v5";
 var ASSETS = [
   "./",
   "./index.html",
@@ -14,7 +14,6 @@ var ASSETS = [
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
-
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
@@ -23,7 +22,6 @@ self.addEventListener("install", function (event) {
   );
   self.skipWaiting();
 });
-
 self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
@@ -34,7 +32,6 @@ self.addEventListener("activate", function (event) {
   );
   self.clients.claim();
 });
-
 self.addEventListener("fetch", function (event) {
   if (event.request.method !== "GET") return;
   event.respondWith(
