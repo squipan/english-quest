@@ -41,6 +41,9 @@
     },
     set: function (key, value) {
       try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+    },
+    remove: function (key) {
+      try { localStorage.removeItem(key); } catch (e) {}
     }
   };
 
@@ -53,6 +56,11 @@
     leaderboardCache: "eq_leaderboard_cache",
     pendingSync: "eq_pending_sync"
   };
+
+  // Kept OUTSIDE of KEYS on purpose: a pending delete request must survive
+  // the localStorage wipe that happens immediately on reset, so it can
+  // still be retried against Firebase next time the device is online.
+  var PENDING_DELETE_KEY = "eq_pending_delete_id";
 
   var AVATAR_BASES = ["🧙‍♂️", "🧝‍♀️", "🥷", "🦸‍♂️", "🧑‍🚀", "🧛‍♂️", "🧚‍♀️", "🤖"];
   var AVATAR_WEAPONS = ["⚔️", "🏹", "🪄", "🔥", "❄️", "⚡", "🛡️", "🗡️"];
@@ -627,6 +635,9 @@
   }
 
   function trySync() {
+    // First, retry any pending delete from a previous offline reset.
+    processPendingDelete();
+
     if (window.EQSync && window.EQSync.isConfigured() && navigator.onLine && player) {
       window.EQSync.pushScore(player, totalPoints).then(function () {
         Store.set(KEYS.pendingSync, 0);
@@ -638,6 +649,48 @@
   }
 
   window.addEventListener("online", trySync);
+
+  // ---------------------------------------------------------
+  // Reset / Start Over (deletes local data + leaderboard entry)
+  // ---------------------------------------------------------
+  function processPendingDelete() {
+    var pendingId = Store.get(PENDING_DELETE_KEY, null);
+    if (!pendingId) return;
+    if (window.EQSync && window.EQSync.isConfigured() && navigator.onLine) {
+      window.EQSync.deleteScore(pendingId).then(function () {
+        Store.remove(PENDING_DELETE_KEY);
+      }).catch(function () {
+        // leave pendingId in place, will retry next time
+      });
+    }
+  }
+
+  function resetPlayer() {
+    var confirmMsg = (I18N.getLang() === "ja")
+      ? "本当に削除しますか？スコアと進行状況がすべて消えます。この操作は取り消せません。"
+      : "Are you sure? This will permanently delete your scores and progress.";
+    if (!window.confirm(confirmMsg)) return;
+
+    if (player && player.id) {
+      if (window.EQSync && window.EQSync.isConfigured() && navigator.onLine) {
+        // Try to delete immediately; if it fails, fall back to queuing.
+        window.EQSync.deleteScore(player.id).catch(function () {
+          Store.set(PENDING_DELETE_KEY, player.id);
+        });
+      } else {
+        // Offline (or sync not configured yet) — queue it for later.
+        Store.set(PENDING_DELETE_KEY, player.id);
+      }
+    }
+
+    // Wipe all local game data EXCEPT the pending-delete marker above,
+    // which lives outside the KEYS object specifically so it survives this.
+    Object.keys(KEYS).forEach(function (k) { Store.remove(KEYS[k]); });
+
+    location.reload();
+  }
+
+  $("#resetPlayerBtn") && $("#resetPlayerBtn").addEventListener("click", resetPlayer);
 
   // ---------------------------------------------------------
   // Nav wiring
