@@ -15,15 +15,15 @@
   "use strict";
 
   // ---- 1) PASTE YOUR FIREBASE CONFIG HERE (or leave as null) ----
-  var firebaseConfig = null;
-  /* Example, after you create a free Firebase project:
   var firebaseConfig = {
-    apiKey: "AIza...",
-    authDomain: "your-project.firebaseapp.com",
-    databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-    projectId: "your-project",
-  };
-  */
+  apiKey: "AIzaSyCUTCNifbcow_xiPtl9IE1S1kvDpbWu_8c",
+  authDomain: "english-quest-b5a29.firebaseapp.com",
+  databaseURL: "https://english-quest-b5a29-default-rtdb.firebaseio.com",
+  projectId: "english-quest-b5a29",
+  storageBucket: "english-quest-b5a29.firebasestorage.app",
+  messagingSenderId: "946170898639",
+  appId: "1:946170898639:web:8977f3f4e45ff1f284afba"
+};
 
   var ready = false;
   var db = null;
