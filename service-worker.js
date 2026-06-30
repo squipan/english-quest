@@ -1,7 +1,7 @@
 /* English Quest — Service Worker
    Caches the app shell so it works fully offline after first load.
    Bump CACHE_NAME whenever you deploy changes so clients update. */
-var CACHE_NAME = "english-quest-v8";
+var CACHE_NAME = "english-quest-v9";
 var ASSETS = [
   "./",
   "./index.html",
