@@ -62,8 +62,8 @@
   // still be retried against Firebase next time the device is online.
   var PENDING_DELETE_KEY = "eq_pending_delete_id";
 
-  var AVATAR_BASES = ["🧙‍♂️", "🧝‍♀️", "🥷", "🦸‍♂️", "🧑‍🚀", "🧛‍♂️", "🧚‍♀️", "🤖"];
-  var AVATAR_WEAPONS = ["⚔️", "🏹", "🪄", "🔥", "❄️", "⚡", "🛡️", "🗡️"];
+  var AVATAR_BASES = ["🧙‍♂️", "🧝‍♀️", "🤺", "🦸‍♂️", "🧑‍🚀", "🧛‍♂️", "🧚‍♀️", "🤖"];
+  var AVATAR_WEAPONS = ["⚔️", "🏹", "🔱", "🔥", "❄️", "⚡", "🛡️", "🗡️"];
   var AVATAR_COLORS = ["#ffc145", "#4ce0d2", "#ff5d8f", "#6be37a", "#9d7bff", "#ff8a4c"];
   var DEFAULT_AVATAR = { base: AVATAR_BASES[0], weapon: AVATAR_WEAPONS[0], color: AVATAR_COLORS[0] };
 
