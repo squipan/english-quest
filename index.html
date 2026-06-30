@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#14102b">
+<title>English Quest</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar" id="topbarRow" style="display:none">
+    <button class="back-btn" id="globalBackBtn" data-nav="screen-home" title="Back to Quest Map">←</button>
+    <span class="player-tag" id="topbarTag">Welcome!</span>
+    <button class="lang-btn" id="langToggleBtn">日本語</button>
+    <span class="points-badge" id="topbarPoints">0 pt</span>
+  </div>
+
+  <!-- ONBOARDING -->
+  <section class="screen active" id="screen-onboard">
+    <button class="lang-btn lang-btn-floating" id="langToggleBtnOnboard">EN / 日本語</button>
+    <div class="title-hero">
+      <p class="logo">⚔️ ENGLISH QUEST</p>
+      <p class="tagline" data-i18n="appTagline">Defeat monsters. Learn English. Earn points!</p>
+    </div>
+    <form class="panel" id="onboardForm">
+      <label for="onboardName" data-i18n="onboardLabel">What's your name? (ニックネームでOK)</label>
+      <input type="text" id="onboardName" placeholder="e.g. Yuki" maxlength="20" required>
+      <div style="height:12px"></div>
+      <button class="btn" type="submit" data-i18n="onboardNextBtn">Next: Make your hero →</button>
+    </form>
+  </section>
+
+  <!-- AVATAR MAKER -->
+  <section class="screen" id="screen-avatar">
+    <p class="section-title" data-i18n="avatarTitle">Create your hero</p>
+    <div class="panel center">
+      <div class="avatar-preview" id="avatarPreview">
+        <span class="avatar-circle" id="avatarPreviewCircle">🧙‍♂️</span>
+        <span class="avatar-weapon" id="avatarPreviewWeapon">⚔️</span>
+      </div>
+      <p class="muted" id="avatarPreviewName">—</p>
+    </div>
+    <p class="section-title" data-i18n="avatarClassLabel">Class</p>
+    <div class="picker-grid" id="avatarBaseGrid"></div>
+    <p class="section-title" data-i18n="avatarWeaponLabel">Weapon</p>
+    <div class="picker-grid" id="avatarWeaponGrid"></div>
+    <p class="section-title" data-i18n="avatarColorLabel">Color</p>
+    <div class="picker-grid" id="avatarColorGrid"></div>
+    <button class="btn" id="avatarConfirmBtn" data-i18n="avatarConfirmBtn">Begin Adventure 🚀</button>
+  </section>
+
+  <!-- HOME -->
+  <section class="screen" id="screen-home">
+    <p class="section-title" data-i18n="sectionUnits">Choose a unit — Solo Quiz Battle</p>
+    <div class="unit-grid" id="unitGrid"></div>
+    <p class="section-title" data-i18n="sectionOther">Other quests</p>
+    <button class="btn teal" id="startBuilderBtn" data-i18n="btnBuilder">📜 Sentence Builder</button>
+    <button class="btn secondary" id="goTeamSetupBtn" data-i18n="btnTeam">🛡️ Team Boss Battle</button>
+  </section>
+
+  <!-- SOLO BATTLE -->
+  <section class="screen" id="screen-battle">
+    <p class="section-title" id="battleUnitName">Unit</p>
+    <div class="combat-stage">
+      <div class="combatant player-side">
+        <span class="combatant-emoji" id="playerCombatEmoji">🧙‍♂️</span>
+        <span class="combatant-weapon" id="playerCombatWeapon">⚔️</span>
+      </div>
+      <span class="vs-mark">VS</span>
+      <div class="combatant enemy-side">
+        <span class="combatant-emoji" id="monsterEmoji">👾</span>
+        <span class="dmg-pop" id="monsterDmgPop"></span>
+      </div>
+    </div>
+    <div class="hp-bar-wrap">
+      <div class="hp-label"><span id="hpLabel">Monster HP</span><span id="battleProgress">Q1/8</span></div>
+      <div class="hp-track"><div class="hp-fill" id="hpFill" style="width:100%"></div></div>
+    </div>
+    <p class="question-text" id="questionText">？？？</p>
+    <div class="options-grid" id="optionsGrid"></div>
+    <p class="feedback-banner" id="feedbackBanner"></p>
+  </section>
+
+  <!-- SENTENCE BUILDER -->
+  <section class="screen" id="screen-builder">
+    <p class="section-title" id="builderProgress">Q1/6</p>
+    <div class="panel">
+      <label data-i18n="builderLabel">Build the English sentence for:</label>
+      <p class="question-text" id="builderJa">？？？</p>
+      <div class="token-bank" id="tokenBank"></div>
+      <div class="token-slot-row" id="tokenSlots"></div>
+    </div>
+    <p class="feedback-banner" id="builderFeedback"></p>
+  </section>
+
+  <!-- TEAM SETUP -->
+  <section class="screen" id="screen-teamsetup">
+    <p class="section-title" data-i18n="teamSetupTitle">Set up teams</p>
+    <p class="muted" data-i18n="teamSetupHint">Pass this phone around, or project it on a screen — teams take turns answering together.</p>
+    <div class="team-list" id="teamList"></div>
+    <button class="btn ghost" id="addTeamBtn" data-i18n="addTeam">+ Add team</button>
+    <button class="btn" id="saveTeamsBtn" data-i18n="startTeamBattle">Start Boss Battle ⚔️</button>
+  </section>
+
+  <!-- TEAM BOSS BATTLE -->
+  <section class="screen" id="screen-teambattle">
+    <p class="section-title" id="tbTurn">Team's turn</p>
+    <div class="combat-stage">
+      <div class="combatant player-side">
+        <span class="combatant-emoji" id="tbTeamCrestEmoji">🛡️</span>
+      </div>
+      <span class="vs-mark">VS</span>
+      <div class="combatant enemy-side">
+        <span class="combatant-emoji" id="tbBossEmoji">🐉</span>
+        <span class="dmg-pop" id="tbBossDmgPop"></span>
+      </div>
+    </div>
+    <div class="hp-bar-wrap">
+      <div class="hp-label"><span id="tbBossHpLabel">Boss HP</span><span id="tbProgress">Q1/12</span></div>
+      <div class="hp-track"><div class="hp-fill" id="tbBossHpFill" style="width:100%"></div></div>
+    </div>
+    <p class="question-text" id="tbQuestionText">？？？</p>
+    <div class="options-grid" id="tbOptionsGrid"></div>
+    <p class="feedback-banner" id="tbFeedback"></p>
+    <div id="tbScoreboard" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="screen-result">
+    <div class="panel result-summary">
+      <p class="section-title" id="resultTitle">Victory!</p>
+      <p class="big-points" id="resultPoints">0</p>
+      <p class="muted" data-i18n="resultPointsLabel">points earned</p>
+      <p class="muted" id="resultDetail"></p>
+    </div>
+    <button class="btn" id="resultHomeBtn" data-i18n="resultBackBtn">Back to Map 🗺️</button>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="screen" id="screen-leaderboard">
+    <p class="section-title" data-i18n="leaderboardTitle">Class Leaderboard</p>
+    <p class="sync-pill" id="syncPill">Checking sync status…</p>
+    <div class="lb-list" id="lbList"></div>
+  </section>
+
+  <footer class="nav-tabs" id="mainNav">
+    <button class="tab-btn active" data-target="screen-home"><span class="ico">🗺️</span><span data-i18n="navMap">Quest Map</span></button>
+    <button class="tab-btn" data-target="screen-leaderboard"><span class="ico">🏆</span><span data-i18n="navRanking">Ranking</span></button>
+  </footer>
+</div>
+
+<script src="content.js"></script>
+<script src="i18n.js"></script>
+<script src="sync.js"></script>
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('service-worker.js').catch(function(){});
+    });
+  }
+</script>
+</body>
+</html>
