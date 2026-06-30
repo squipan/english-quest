@@ -54,8 +54,36 @@
     teams: "eq_teams",
     teamScores: "eq_team_scores",
     leaderboardCache: "eq_leaderboard_cache",
-    pendingSync: "eq_pending_sync"
+    pendingSync: "eq_pending_sync",
+    dailyUnitAttempts: "eq_daily_unit_attempts",
+    wordSeenCounts: "eq_word_seen_counts",
+    unitRotationQueue: "eq_unit_rotation_queue"
   };
+
+  var MAX_SCORING_ATTEMPTS_PER_UNIT_PER_DAY = 3;
+
+  function todayKey() {
+    var d = new Date();
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+
+  function getDailyAttempts() {
+    var rec = Store.get(KEYS.dailyUnitAttempts, { date: todayKey(), counts: {} });
+    if (rec.date !== todayKey()) rec = { date: todayKey(), counts: {} };
+    return rec;
+  }
+
+  function registerUnitAttempt(unitId) {
+    var rec = getDailyAttempts();
+    rec.counts[unitId] = (rec.counts[unitId] || 0) + 1;
+    Store.set(KEYS.dailyUnitAttempts, rec);
+    return rec.counts[unitId];
+  }
+
+  function attemptsLeftToday(unitId) {
+    var rec = getDailyAttempts();
+    return Math.max(0, MAX_SCORING_ATTEMPTS_PER_UNIT_PER_DAY - (rec.counts[unitId] || 0));
+  }
 
   // Kept OUTSIDE of KEYS on purpose: a pending delete request must survive
   // the localStorage wipe that happens immediately on reset, so it can
@@ -230,12 +258,66 @@
   // ---------------------------------------------------------
   var MONSTERS = ["👾", "🐲", "👹", "🦑", "🐙", "🦂", "🐍", "🧌"];
   var battle = null;
+  var battleUnitExhausted = false;
+
+  var MAX_WORD_LIFETIME_USES = 3;
+
+  function getWordSeenCounts() {
+    return Store.get(KEYS.wordSeenCounts, {});
+  }
+
+  function getRotationQueues() {
+    return Store.get(KEYS.unitRotationQueue, {});
+  }
+
+  function saveRotationQueues(q) {
+    Store.set(KEYS.unitRotationQueue, q);
+  }
+
+  // True rotation, not just biasing: deals words from a shuffled queue
+  // without replacement. Once the queue empties, it's rebuilt from
+  // whatever words still haven't hit MAX_WORD_LIFETIME_USES, reshuffled,
+  // so every word in the unit gets used once before any word repeats.
+  // Once a word has been dealt 3 times total (ever), it's retired from
+  // the rotation for good — so a unit with N words can produce at most
+  // N * 3 question-appearances before it's fully exhausted.
+  function drawWordsForUnit(unit, count) {
+    var counts = getWordSeenCounts();
+    var queues = getRotationQueues();
+    var queue = (queues[unit.id] || []).slice();
+    var result = [];
+    var exhausted = false;
+
+    for (var i = 0; i < count; i++) {
+      if (queue.length === 0) {
+        var eligible = unit.words
+          .map(function (w) { return w.en; })
+          .filter(function (en) { return (counts[en] || 0) < MAX_WORD_LIFETIME_USES; });
+        if (eligible.length === 0) { exhausted = true; break; }
+        shuffle(eligible);
+        queue = eligible;
+      }
+      var en = queue.shift();
+      counts[en] = (counts[en] || 0) + 1;
+      result.push(en);
+    }
+
+    queues[unit.id] = queue;
+    saveRotationQueues(queues);
+    Store.set(KEYS.wordSeenCounts, counts);
+
+    return {
+      words: result.map(function (en) {
+        return unit.words.filter(function (w) { return w.en === en; })[0];
+      }),
+      exhausted: exhausted
+    };
+  }
 
   function buildQuizQuestions(unit, count) {
-    var pool = unit.words.slice();
-    shuffle(pool);
-    pool = pool.slice(0, Math.min(count, pool.length));
-    return pool.map(function (w) {
+    var draw = drawWordsForUnit(unit, count);
+    battleUnitExhausted = draw.exhausted;
+    return draw.words.map(function (w) {
       var distractors = unit.words.filter(function (x) { return x.en !== w.en; });
       shuffle(distractors);
       var options = [w].concat(distractors.slice(0, 3));
@@ -263,6 +345,8 @@
 
   function startQuizBattle(unit) {
     var qs = buildQuizQuestions(unit, 8);
+    var attemptNum = registerUnitAttempt(unit.id);
+    var scoringAllowed = attemptNum <= MAX_SCORING_ATTEMPTS_PER_UNIT_PER_DAY;
     battle = {
       unit: unit,
       questions: qs,
@@ -270,9 +354,12 @@
       monsterHp: qs.length,
       monsterMaxHp: qs.length,
       correctCount: 0,
-      monster: MONSTERS[Math.floor(Math.random() * MONSTERS.length)]
+      monster: MONSTERS[Math.floor(Math.random() * MONSTERS.length)],
+      scoringAllowed: scoringAllowed
     };
-    $("#battleUnitName").textContent = unit.emoji + " " + unit.name;
+    $("#battleUnitName").textContent = unit.emoji + " " + unit.name +
+      (scoringAllowed ? "" : (I18N.getLang() === "ja" ? "（練習のみ）" : " (practice only)")) +
+      (battleUnitExhausted ? (I18N.getLang() === "ja" ? "（マスター済み！）" : " — mastered! 🌟") : "");
     var av = getAvatar();
     $("#playerCombatEmoji").textContent = av.base;
     $("#playerCombatWeapon").textContent = av.weapon;
@@ -324,7 +411,7 @@
       }, 200);
       $("#feedbackBanner").textContent = t("hitText") + " " + q.answer;
       $("#feedbackBanner").classList.add("correct");
-      addPoints(10);
+      if (battle.scoringAllowed) addPoints(10);
     } else {
       $("#monsterEmoji").classList.add("attack");
       setTimeout(function () { $("#playerCombatEmoji").classList.add("flash-hurt"); }, 200);
@@ -342,10 +429,11 @@
     var won = battle.correctCount === battle.questions.length;
     unitProgress[battle.unit.id] = (unitProgress[battle.unit.id] || 0) + (won ? 1 : 0);
     Store.set(KEYS.unitProgress, unitProgress);
-    if (won) addPoints(20);
+    if (won && battle.scoringAllowed) addPoints(20);
     $("#resultTitle").textContent = won ? t("victory") : t("battleComplete");
-    $("#resultPoints").textContent = (battle.correctCount * 10) + (won ? 20 : 0);
-    $("#resultDetail").textContent = battle.correctCount + " / " + battle.questions.length + " correct";
+    $("#resultPoints").textContent = battle.scoringAllowed ? ((battle.correctCount * 10) + (won ? 20 : 0)) : 0;
+    $("#resultDetail").textContent = battle.correctCount + " / " + battle.questions.length + " correct" +
+      (battle.scoringAllowed ? "" : (I18N.getLang() === "ja" ? "（本日のポイント上限に到達）" : " — daily point cap reached for this unit"));
     battle = null;
     showScreen("screen-result");
   }
@@ -386,10 +474,12 @@
       chip.addEventListener("click", function () { placeToken(i); });
       bank.appendChild(chip);
     });
-    builder.current.placed.forEach(function (tok) {
-      var chip = document.createElement("div");
+    builder.current.placed.forEach(function (tok, i) {
+      var chip = document.createElement("button");
+      chip.type = "button";
       chip.className = "token-chip placed";
       chip.textContent = tok;
+      chip.addEventListener("click", function () { removeToken(i); });
       slots.appendChild(chip);
     });
     $("#builderFeedback").textContent = "";
@@ -401,6 +491,12 @@
     builder.current.placed.push(tok);
     renderBuilderUI();
     if (builder.current.bank.length === 0) checkBuilder();
+  }
+
+  function removeToken(i) {
+    var tok = builder.current.placed.splice(i, 1)[0];
+    builder.current.bank.push(tok);
+    renderBuilderUI();
   }
 
   function checkBuilder() {
